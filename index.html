@@ -12,11 +12,10 @@
 <meta name="apple-mobile-web-app-title" content="Location Roulette" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="color-scheme" content="dark" />
-<!-- apple-touch-icon + manifest werden per JS (Canvas/Blob) eingehängt, damit alles in EINER Datei bleibt -->
 
 <style>
   :root{
-    /* Palette: warmer Espresso-Dark statt blaustichigem Schwarz, ein einziger Akzent (Safran) */
+    /* Palette: warmer Espresso-Dark, ein Akzent (Safran) + dezentes Grün für „besucht" */
     --bg:        #15120D;
     --bg-2:      #1C1813;
     --surface:   #241F17;
@@ -28,6 +27,8 @@
     --amber:     #F3A227;
     --amber-2:   #FFC25C;
     --amber-tint: rgba(243,162,39,.14);
+    --seen:      #8FB98A;
+    --seen-tint: rgba(143,185,138,.14);
     --danger:    #E5664A;
 
     --font-display: ui-rounded, "SF Pro Rounded", "Segoe UI", system-ui, sans-serif;
@@ -48,8 +49,7 @@
       var(--bg);
     color: var(--text);
     font-family: var(--font-body);
-    font-size: 16px;
-    line-height: 1.4;
+    font-size: 16px; line-height: 1.4;
     -webkit-font-smoothing: antialiased;
     overscroll-behavior-y: none;
   }
@@ -65,112 +65,113 @@
   }
   .brand__mark{
     width:44px; height:44px; flex:0 0 auto;
-    display:grid; place-items:center;
-    font-size: 24px;
-    border-radius: 14px;
-    background: var(--amber-tint);
+    display:grid; place-items:center; font-size: 24px;
+    border-radius: 14px; background: var(--amber-tint);
     box-shadow: inset 0 0 0 1px var(--line-2);
   }
-  .brand__name{
-    margin:0; font-family: var(--font-display);
-    font-size: 22px; font-weight: 800; letter-spacing: -.02em;
-  }
+  .brand__name{ margin:0; font-family: var(--font-display); font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
   .brand__name b{ color: var(--amber); font-weight: 800; }
   .brand__sub{ margin:2px 0 0; font-size: 13px; color: var(--muted); }
 
   /* ---------- Stage ---------- */
-  .stage{
-    padding: 4px 16px var(--dock-h);
-    max-width: 640px; margin: 0 auto;
-  }
+  .stage{ padding: 4px 16px var(--dock-h); max-width: 640px; margin: 0 auto; }
 
-  .filter{
-    display:inline-flex; align-items:center; gap:10px;
-    margin: 6px 4px 18px;
-    padding: 11px 16px 11px 13px;
-    border-radius: 999px;
-    background: var(--surface);
+  /* ---------- Filterleiste ---------- */
+  .filters{ display:flex; flex-wrap:wrap; gap:10px; margin: 6px 2px 18px; }
+
+  .seg{
+    display:inline-flex; padding:4px; gap:2px;
+    background: var(--surface); border-radius:999px;
     box-shadow: inset 0 0 0 1px var(--line);
-    font-size: 14.5px; color: var(--muted);
-    user-select: none;
-    transition: color .15s, box-shadow .15s, background .15s;
   }
-  .filter input{ position:absolute; opacity:0; pointer-events:none; }
-  .filter .knob{
-    width: 42px; height: 25px; border-radius: 999px;
+  .seg button{
+    border:0; background:transparent; color: var(--muted);
+    font-size:14px; font-weight:600; padding:8px 15px; min-height:40px;
+    border-radius:999px; transition: background .15s, color .15s;
+  }
+  .seg button[aria-pressed="true"]{ background: var(--amber); color:#1A140A; }
+  .seg button:focus-visible{ outline:2px solid var(--amber-2); outline-offset:2px; }
+
+  .pill{
+    display:inline-flex; align-items:center; gap:10px;
+    padding: 0 16px 0 13px; min-height:48px;
+    border-radius: 999px; background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--line);
+    font-size: 14px; color: var(--muted); user-select: none;
+    transition: color .15s, box-shadow .15s;
+  }
+  .pill input{ position:absolute; opacity:0; pointer-events:none; }
+  .pill .knob{
+    width: 40px; height: 24px; border-radius: 999px;
     background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-2);
     position: relative; transition: background .2s;
   }
-  .filter .knob::after{
+  .pill .knob::after{
     content:""; position:absolute; top:3px; left:3px;
-    width:19px; height:19px; border-radius:50%;
+    width:18px; height:18px; border-radius:50%;
     background:#7A6F5C; transition: transform .2s, background .2s;
   }
-  .filter input:checked ~ .knob{ background: var(--amber); }
-  .filter input:checked ~ .knob::after{ transform: translateX(17px); background:#1A140A; }
-  .filter:has(input:checked){ color: var(--text); box-shadow: inset 0 0 0 1px var(--amber-tint); }
-  .filter input:focus-visible ~ .knob{ outline: 2px solid var(--amber-2); outline-offset: 3px; }
+  .pill input:checked ~ .knob{ background: var(--amber); }
+  .pill input:checked ~ .knob::after{ transform: translateX(16px); background:#1A140A; }
+  .pill:has(input:checked){ color: var(--text); box-shadow: inset 0 0 0 1px var(--amber-tint); }
+  .pill input:focus-visible ~ .knob{ outline: 2px solid var(--amber-2); outline-offset: 3px; }
 
   /* ---------- Library ---------- */
   .library{ display:flex; flex-direction: column; gap: 12px; }
 
   .card{
-    background: var(--surface);
-    border-radius: var(--r-lg);
+    background: var(--surface); border-radius: var(--r-lg);
     box-shadow: inset 0 0 0 1px var(--line);
     padding: 16px 16px 14px;
     animation: rise .28s cubic-bezier(.2,.7,.2,1) both;
   }
   @keyframes rise{ from{ opacity:0; transform: translateY(8px);} to{opacity:1;transform:none;} }
+  .card--visited .card__title{ opacity:.6; }
 
-  .card__top{ display:flex; align-items:flex-start; gap:10px; }
   .card__title{
-    margin:0; flex:1 1 auto; min-width:0;
-    font-family: var(--font-display);
-    font-size: 18px; font-weight: 750; letter-spacing:-.01em;
-    overflow-wrap:anywhere;
+    margin:0; font-family: var(--font-display);
+    font-size: 18px; font-weight: 750; letter-spacing:-.01em; overflow-wrap:anywhere;
   }
+  .tags{ display:flex; flex-wrap:wrap; gap:6px; margin-top: 8px; }
   .badge{
-    flex:0 0 auto; margin-top:1px;
     display:inline-flex; align-items:center; gap:5px;
-    font-size:12px; font-weight:600; color: var(--amber-2);
-    background: var(--amber-tint);
-    padding: 4px 9px; border-radius: 999px;
+    font-size:12px; font-weight:600; padding: 4px 9px; border-radius: 999px;
   }
+  .badge--lunch{ color: var(--amber-2); background: var(--amber-tint); }
+  .badge--seen{ color: var(--seen); background: var(--seen-tint); }
+
   .card__menu{
-    margin: 9px 0 2px; font-size: 14px; color: var(--muted);
-    overflow-wrap:anywhere;
+    margin: 10px 0 2px; font-size: 14px; color: var(--muted); overflow-wrap:anywhere;
     padding-left: 11px; border-left: 2px solid var(--amber-tint);
   }
-  .card__actions{ display:flex; gap:8px; margin-top:14px; }
+  .card__actions{ display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
 
   .chip{
-    flex:1 1 auto; min-height: 44px;
+    flex:1 1 auto; min-width: 92px; min-height: 44px;
     display:inline-flex; align-items:center; justify-content:center; gap:7px;
     border:0; border-radius: var(--r-sm);
-    background: var(--surface-2);
-    box-shadow: inset 0 0 0 1px var(--line);
-    color: var(--text); font-size: 14px; font-weight:600;
-    text-decoration:none;
-    transition: transform .08s, background .15s;
+    background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line);
+    color: var(--text); font-size: 14px; font-weight:600; text-decoration:none;
+    transition: transform .08s;
   }
   .chip:active{ transform: scale(.97); }
-  .chip--live{ color: var(--amber-2); }
-  .chip--del{ flex:0 0 auto; width:46px; color: var(--danger); font-size:18px; }
+  .chip--maps{ color: var(--amber-2); }
+  .chip--icon{ flex:0 0 auto; min-width:0; width:46px; font-size:17px; }
+  .chip--edit{ color: var(--text); }
+  .chip--del{ color: var(--danger); }
 
-  /* Leerer Zustand */
+  /* Leer-Zustände */
   .empty{
     text-align:center; color: var(--muted);
-    padding: 48px 24px; border-radius: var(--r-lg);
-    box-shadow: inset 0 0 0 1px var(--line);
-    background: var(--surface);
+    padding: 44px 24px; border-radius: var(--r-lg);
+    box-shadow: inset 0 0 0 1px var(--line); background: var(--surface);
   }
   .empty .em{ font-size: 34px; display:block; margin-bottom: 10px; }
   .empty p{ margin: 4px 0; }
   .empty strong{ color: var(--text); font-weight: 700; }
   [hidden]{ display:none !important; }
 
-  /* ---------- Dock (Daumen-Bereich unten) ---------- */
+  /* ---------- Dock ---------- */
   .dock{
     position: fixed; left:0; right:0; bottom:0; z-index: 6;
     display:flex; gap:12px;
@@ -179,11 +180,9 @@
   }
   .btn-add{
     flex:0 0 auto; width: 58px; min-height: var(--tap);
-    border-radius: var(--r-md); border:0;
-    background: var(--surface);
+    border-radius: var(--r-md); border:0; background: var(--surface);
     box-shadow: inset 0 0 0 1px var(--line-2);
-    color: var(--text); font-size: 26px; line-height:1;
-    transition: transform .08s;
+    color: var(--text); font-size: 26px; line-height:1; transition: transform .08s;
   }
   .btn-add:active{ transform: scale(.95); }
   .btn-spin{
@@ -208,11 +207,11 @@
 
   .sheet{
     position: fixed; left:0; right:0; bottom:0; z-index: 10;
-    background: var(--bg-2);
-    border-radius: 26px 26px 0 0;
+    background: var(--bg-2); border-radius: 26px 26px 0 0;
     box-shadow: 0 -1px 0 var(--line-2), 0 -30px 60px -20px rgba(0,0,0,.6);
     padding: 10px 20px calc(20px + env(safe-area-inset-bottom));
     max-width: 640px; margin: 0 auto;
+    max-height: 92vh; overflow-y: auto;
     animation: sheetUp .32s cubic-bezier(.2,.8,.2,1) both;
   }
   @keyframes sheetUp{ from{ transform: translateY(100%);} to{ transform:none;} }
@@ -221,12 +220,12 @@
 
   .field{ margin-bottom: 14px; }
   .field label{ display:block; font-size: 13px; color: var(--muted); margin: 0 0 7px 2px; }
+  .field .hint{ display:block; font-size:12px; color:#6F6450; margin: 6px 2px 0; }
   .input{
     width:100%; min-height: var(--tap);
     background: var(--surface); border:0; border-radius: var(--r-md);
     box-shadow: inset 0 0 0 1px var(--line-2);
-    color: var(--text); font-size: 16px;
-    padding: 13px 15px;
+    color: var(--text); font-size: 16px; padding: 13px 15px;
   }
   textarea.input{ min-height: 80px; resize: vertical; line-height:1.45; }
   .input::placeholder{ color: #6F6450; }
@@ -248,6 +247,7 @@
   .checkrow .box::after{ content:"✓"; opacity:0; transition:opacity .12s; }
   .checkrow input:checked ~ .box{ background: var(--amber); }
   .checkrow input:checked ~ .box::after{ opacity:1; }
+  .checkrow.seen input:checked ~ .box{ background: var(--seen); }
   .checkrow span{ font-size:15px; font-weight:600; }
   .checkrow input:focus-visible ~ .box{ outline:2px solid var(--amber-2); outline-offset:3px; }
 
@@ -267,15 +267,13 @@
   }
   .err{ color: var(--danger); font-size: 13px; margin: -8px 2px 12px; min-height: 1px; }
 
-  /* ---------- Roulette-Ergebnis (das Signature-Moment) ---------- */
+  /* ---------- Roulette-Ergebnis ---------- */
   .result{
     position: fixed; inset:0; z-index: 12;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     padding: 32px 24px calc(32px + env(safe-area-inset-bottom));
     background: radial-gradient(90% 60% at 50% 38%, #241B0E 0%, rgba(10,8,5,.96) 70%);
-    backdrop-filter: blur(3px);
-    animation: fade .25s ease both;
-    text-align:center;
+    backdrop-filter: blur(3px); animation: fade .25s ease both; text-align:center;
   }
   .result__eyebrow{
     font-size: 12.5px; letter-spacing: .22em; text-transform: uppercase;
@@ -284,14 +282,10 @@
   .reel{
     font-family: var(--font-display);
     font-size: clamp(30px, 9vw, 44px); font-weight: 850; letter-spacing:-.02em;
-    line-height: 1.1; min-height: 1.1em; overflow-wrap:anywhere;
-    max-width: 14ch;
+    line-height: 1.1; min-height: 1.1em; overflow-wrap:anywhere; max-width: 14ch;
   }
   .reel.spinning{ color: var(--muted); filter: blur(.3px); }
-  .reel.landed{
-    color: var(--text);
-    animation: land .55s cubic-bezier(.18,1.5,.3,1) both;
-  }
+  .reel.landed{ color: var(--text); animation: land .55s cubic-bezier(.18,1.5,.3,1) both; }
   @keyframes land{ 0%{transform: scale(.6); opacity:0;} 60%{transform: scale(1.08);} 100%{transform: scale(1); opacity:1;} }
 
   .halo{
@@ -302,24 +296,19 @@
   .halo.on{ animation: halo 1.1s ease-out forwards; }
   @keyframes halo{ 0%{opacity:0; transform:scale(.5);} 40%{opacity:1;} 100%{opacity:0; transform:scale(1.5);} }
 
-  .result__menu{
-    margin: 20px 0 4px; font-size: 15.5px; color: var(--amber-2);
-    max-width: 30ch; overflow-wrap:anywhere;
-  }
+  .result__menu{ margin: 20px 0 4px; font-size: 15.5px; color: var(--amber-2); max-width: 30ch; overflow-wrap:anywhere; }
   .result__hint{ color:var(--muted); font-size:15px; max-width: 26ch; margin-top: 6px; }
-  .result__actions{
-    display:flex; flex-wrap:wrap; gap:10px; justify-content:center;
-    margin-top: 30px; width:100%; max-width: 360px;
-  }
+  .result__actions{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top: 30px; width:100%; max-width: 360px; }
   .rbtn{
     flex:1 1 140px; min-height: var(--tap);
     display:inline-flex; align-items:center; justify-content:center; gap:8px;
     border:0; border-radius: var(--r-md); text-decoration:none;
     font-size: 15px; font-weight: 700;
-    background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2);
-    color: var(--text);
+    background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--text);
   }
   .rbtn--go{ background: linear-gradient(180deg, var(--amber-2), var(--amber)); color:#1A140A; box-shadow:none; }
+  .rbtn--seen{ flex-basis:100%; color: var(--seen); box-shadow: inset 0 0 0 1px var(--seen-tint); }
+  .rbtn--seen:disabled{ color: var(--seen); opacity:.7; }
   .rbtn--again{ flex-basis:100%; background: transparent; box-shadow: inset 0 0 0 1px var(--line-2); color: var(--muted); }
   .rbtn:active{ transform: scale(.98); }
   .result__close{
@@ -345,18 +334,30 @@
   </header>
 
   <main class="stage">
-    <label class="filter">
-      <input type="checkbox" id="filterLunch" />
-      <span class="knob" aria-hidden="true"></span>
-      <span>Nur mit Mittagsmenü</span>
-    </label>
+    <div class="filters">
+      <div class="seg" id="seg" role="group" aria-label="Nach Besuch filtern">
+        <button type="button" data-v="all" aria-pressed="true">Alle</button>
+        <button type="button" data-v="new" aria-pressed="false">Neu</button>
+        <button type="button" data-v="visited" aria-pressed="false">Besucht</button>
+      </div>
+      <label class="pill">
+        <input type="checkbox" id="filterLunch" />
+        <span class="knob" aria-hidden="true"></span>
+        <span>🍽️ Mittagsmenü</span>
+      </label>
+    </div>
 
     <section class="library" id="library" aria-live="polite"></section>
 
     <div class="empty" id="empty" hidden>
-      <span class="em" aria-hidden="true">🍽️</span>
+      <span class="em" aria-hidden="true">📍</span>
       <p><strong>Noch keine Orte gespeichert</strong></p>
       <p>Tippe unten auf <strong>＋</strong> und füge deinen ersten Ort hinzu.</p>
+    </div>
+    <div class="empty" id="emptyFiltered" hidden>
+      <span class="em" aria-hidden="true">🔍</span>
+      <p><strong>Keine Treffer</strong></p>
+      <p>Für die aktuellen Filter gibt es keinen Ort.</p>
     </div>
   </main>
 
@@ -365,11 +366,11 @@
     <button class="btn-spin" id="spin">🎲 Roulette</button>
   </nav>
 
-  <!-- ===== Eingabe-Sheet ===== -->
+  <!-- ===== Eingabe-/Bearbeiten-Sheet ===== -->
   <div class="scrim" id="scrim" hidden></div>
-  <div class="sheet" id="addSheet" role="dialog" aria-modal="true" aria-label="Ort hinzufügen" hidden>
+  <div class="sheet" id="addSheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
     <div class="grip" aria-hidden="true"></div>
-    <h2>Ort hinzufügen</h2>
+    <h2 id="sheetTitle">Ort hinzufügen</h2>
 
     <div class="field">
       <label for="fName">Name des Ortes</label>
@@ -377,8 +378,14 @@
     </div>
 
     <div class="field">
-      <label for="fUrl">Link (Instagram, Google Maps …)</label>
-      <input class="input" id="fUrl" type="url" placeholder="https://…" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" />
+      <label for="fUrl">Link (Instagram, Website …)</label>
+      <input class="input" id="fUrl" type="url" placeholder="https://…" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="next" />
+    </div>
+
+    <div class="field">
+      <label for="fMaps">Google-Maps-Link</label>
+      <input class="input" id="fMaps" type="url" placeholder="https://maps.google.com/…" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" />
+      <span class="hint">Optional. Wird leer gelassen, sucht „Maps" automatisch nach dem Namen.</span>
     </div>
 
     <label class="checkrow">
@@ -391,6 +398,12 @@
       <label for="fLunch">Infos zum Mittagsmenü / Preise</label>
       <textarea class="input" id="fLunch" placeholder="z. B. Mo–Fr 11:30–14:00 · Tagesteller 14 €"></textarea>
     </div>
+
+    <label class="checkrow seen">
+      <input type="checkbox" id="fVisited" />
+      <span class="box" aria-hidden="true"></span>
+      <span>Schon besucht? ✓</span>
+    </label>
 
     <div class="err" id="formErr" aria-live="assertive"></div>
 
@@ -417,6 +430,7 @@
   /* =========================================================================
      Location Roulette – 100 % lokal. Keine Server-Calls, keine Cookies, keine Keys.
      Alle Daten liegen ausschließlich im localStorage dieses Geräts.
+     Datensatz: { id, name, url, maps, hasLunch, lunchInfo, visited, created, updated }
      ========================================================================= */
 
   const STORE_KEY = "lunch_roulette_v1";
@@ -437,14 +451,12 @@
   }
   let places = load();
 
-  /* ---------- Sicherheit: Links streng prüfen ----------
-     Nur http/https zulassen. javascript:, data: usw. werden blockiert,
-     damit aus gespeicherten Links niemals Code ausgeführt werden kann. */
+  /* ---------- Sicherheit: Links streng prüfen (nur http/https) ---------- */
   function safeUrl(raw) {
     let u = (raw || "").trim();
     if (!u) return null;
     if (!/^https?:\/\//i.test(u)) {
-      if (/^[\w.-]+\.[a-z]{2,}(\/|$|\?)/i.test(u)) u = "https://" + u; // bloße Domain ergänzen
+      if (/^[\w.-]+\.[a-z]{2,}(\/|$|\?)/i.test(u)) u = "https://" + u;
       else return null;
     }
     try {
@@ -452,53 +464,72 @@
       return (p.protocol === "http:" || p.protocol === "https:") ? p.href : null;
     } catch (e) { return null; }
   }
-
-  // Google-Maps-Suche nach dem Ortsnamen – zeigt live Öffnungszeiten / Auslastung.
-  function liveStatusUrl(name) {
-    return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(name);
+  // Maps-Ziel: expliziter Maps-Link, sonst Google-Maps-Suche nach dem Namen (Live-Status)
+  function mapsUrl(p) {
+    return safeUrl(p.maps) || ("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(p.name));
   }
-  function openExternal(url) {
-    if (!url) return;
-    window.open(url, "_blank", "noopener,noreferrer");
+  function openExternal(url) { if (url) window.open(url, "_blank", "noopener,noreferrer"); }
+
+  /* ---------- Filter ---------- */
+  let visitedFilter = "all";          // "all" | "new" | "visited"
+  let lunchOnly = false;
+
+  function getFiltered() {
+    return places.filter((p) => {
+      if (lunchOnly && !p.hasLunch) return false;
+      if (visitedFilter === "new" && p.visited) return false;
+      if (visitedFilter === "visited" && !p.visited) return false;
+      return true;
+    });
   }
 
   /* ---------- Liste rendern (XSS-sicher per textContent) ---------- */
-  const libraryEl = $("library");
-  const emptyEl = $("empty");
-  const countEl = $("count");
+  const libraryEl = $("library"), emptyEl = $("empty"),
+        emptyFilteredEl = $("emptyFiltered"), countEl = $("count");
 
   function render() {
     libraryEl.textContent = "";
-    const n = places.length;
-    countEl.textContent = n === 0 ? "Noch keine Orte" : (n === 1 ? "1 Ort gespeichert" : n + " Orte gespeichert");
-    emptyEl.hidden = n !== 0;
-    $("spin").disabled = n === 0;
+    const total = places.length;
+    const list = getFiltered();
+    const shown = list.length;
 
-    // Neueste zuerst
-    [...places].reverse().forEach((p) => {
+    countEl.textContent =
+      total === 0 ? "Noch keine Orte"
+      : shown === total ? (total === 1 ? "1 Ort gespeichert" : total + " Orte gespeichert")
+      : shown + " von " + total + " angezeigt";
+
+    emptyEl.hidden = total !== 0;
+    emptyFilteredEl.hidden = !(total !== 0 && shown === 0);
+    $("spin").disabled = shown === 0;
+
+    [...list].reverse().forEach((p) => {
       const card = document.createElement("article");
-      card.className = "card";
-
-      const top = document.createElement("div");
-      top.className = "card__top";
+      card.className = "card" + (p.visited ? " card--visited" : "");
 
       const title = document.createElement("h3");
       title.className = "card__title";
       title.textContent = p.name;
-      top.appendChild(title);
+      card.appendChild(title);
 
-      if (p.hasLunch) {
-        const badge = document.createElement("span");
-        badge.className = "badge";
-        badge.textContent = "🍽️ Menü";
-        top.appendChild(badge);
+      if (p.hasLunch || p.visited) {
+        const tags = document.createElement("div");
+        tags.className = "tags";
+        if (p.hasLunch) {
+          const b = document.createElement("span");
+          b.className = "badge badge--lunch"; b.textContent = "🍽️ Menü";
+          tags.appendChild(b);
+        }
+        if (p.visited) {
+          const b = document.createElement("span");
+          b.className = "badge badge--seen"; b.textContent = "✓ Besucht";
+          tags.appendChild(b);
+        }
+        card.appendChild(tags);
       }
-      card.appendChild(top);
 
       if (p.hasLunch && p.lunchInfo) {
         const menu = document.createElement("p");
-        menu.className = "card__menu";
-        menu.textContent = p.lunchInfo;
+        menu.className = "card__menu"; menu.textContent = p.lunchInfo;
         card.appendChild(menu);
       }
 
@@ -509,25 +540,26 @@
       if (safe) {
         const open = document.createElement("a");
         open.className = "chip";
-        open.href = safe;
-        open.target = "_blank";
-        open.rel = "noopener noreferrer";
+        open.href = safe; open.target = "_blank"; open.rel = "noopener noreferrer";
         open.textContent = "↗ Öffnen";
         actions.appendChild(open);
       }
 
-      const live = document.createElement("button");
-      live.className = "chip chip--live";
-      live.type = "button";
-      live.textContent = "📍 Live-Status";
-      live.addEventListener("click", () => openExternal(liveStatusUrl(p.name)));
-      actions.appendChild(live);
+      const maps = document.createElement("button");
+      maps.className = "chip chip--maps"; maps.type = "button";
+      maps.textContent = "📍 Maps";
+      maps.addEventListener("click", () => openExternal(mapsUrl(p)));
+      actions.appendChild(maps);
+
+      const edit = document.createElement("button");
+      edit.className = "chip chip--icon chip--edit"; edit.type = "button";
+      edit.setAttribute("aria-label", "Ort bearbeiten"); edit.textContent = "✎";
+      edit.addEventListener("click", () => openSheetForEdit(p.id));
+      actions.appendChild(edit);
 
       const del = document.createElement("button");
-      del.className = "chip chip--del";
-      del.type = "button";
-      del.setAttribute("aria-label", "Ort löschen");
-      del.textContent = "🗑";
+      del.className = "chip chip--icon chip--del"; del.type = "button";
+      del.setAttribute("aria-label", "Ort löschen"); del.textContent = "🗑";
       del.addEventListener("click", () => deletePlace(p.id));
       actions.appendChild(del);
 
@@ -540,26 +572,62 @@
     const p = places.find((x) => x.id === id);
     if (p && !confirm('„' + p.name + '" löschen?')) return;
     places = places.filter((x) => x.id !== id);
-    persist(places);
-    render();
+    persist(places); render();
+  }
+  function markVisited(id) {
+    const p = places.find((x) => x.id === id);
+    if (!p) return;
+    p.visited = true; p.updated = Date.now();
+    persist(places); render();
   }
 
-  /* ---------- Eingabe-Sheet ---------- */
-  const sheet = $("addSheet"), scrim = $("scrim");
-  const fName = $("fName"), fUrl = $("fUrl"), fHasLunch = $("fHasLunch"),
-        fLunch = $("fLunch"), lunchWrap = $("lunchWrap"), formErr = $("formErr");
+  /* ---------- Filter-Bedienung ---------- */
+  $("seg").addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-v]");
+    if (!btn) return;
+    visitedFilter = btn.dataset.v;
+    [...$("seg").children].forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+    render();
+  });
+  $("filterLunch").addEventListener("change", (e) => { lunchOnly = e.target.checked; render(); });
 
-  function openSheet() {
-    formErr.textContent = "";
-    scrim.hidden = false; sheet.hidden = false;
+  /* ---------- Eingabe-/Bearbeiten-Sheet ---------- */
+  const sheet = $("addSheet"), scrim = $("scrim");
+  const fName = $("fName"), fUrl = $("fUrl"), fMaps = $("fMaps"),
+        fHasLunch = $("fHasLunch"), fLunch = $("fLunch"), lunchWrap = $("lunchWrap"),
+        fVisited = $("fVisited"), formErr = $("formErr"),
+        sheetTitle = $("sheetTitle"), saveBtn = $("savePlace");
+  let editingId = null;
+
+  function resetForm() {
+    editingId = null;
+    fName.value = ""; fUrl.value = ""; fMaps.value = ""; fLunch.value = "";
+    fHasLunch.checked = false; lunchWrap.hidden = true;
+    fVisited.checked = false; formErr.textContent = "";
+    sheetTitle.textContent = "Ort hinzufügen";
+    saveBtn.textContent = "Speichern";
+  }
+  function openSheet() { scrim.hidden = false; sheet.hidden = false; }
+  function closeSheet() { sheet.hidden = true; scrim.hidden = true; }
+
+  function openSheetForAdd() {
+    resetForm(); openSheet();
     setTimeout(() => fName.focus(), 60);
   }
-  function closeSheet() {
-    sheet.hidden = true; scrim.hidden = true;
-  }
-  function resetForm() {
-    fName.value = ""; fUrl.value = ""; fLunch.value = "";
-    fHasLunch.checked = false; lunchWrap.hidden = true; formErr.textContent = "";
+  function openSheetForEdit(id) {
+    const p = places.find((x) => x.id === id);
+    if (!p) return;
+    resetForm();
+    editingId = id;
+    fName.value = p.name || "";
+    fUrl.value = p.url || "";
+    fMaps.value = p.maps || "";
+    fHasLunch.checked = !!p.hasLunch; lunchWrap.hidden = !p.hasLunch;
+    fLunch.value = p.lunchInfo || "";
+    fVisited.checked = !!p.visited;
+    sheetTitle.textContent = "Ort bearbeiten";
+    saveBtn.textContent = "Aktualisieren";
+    openSheet();
   }
 
   fHasLunch.addEventListener("change", () => {
@@ -570,43 +638,48 @@
   function savePlace() {
     const name = fName.value.trim();
     const urlRaw = fUrl.value.trim();
+    const mapsRaw = fMaps.value.trim();
     formErr.textContent = "";
 
     if (!name) { formErr.textContent = "Bitte einen Namen eingeben."; fName.focus(); return; }
     if (urlRaw && !safeUrl(urlRaw)) {
-      formErr.textContent = "Der Link sieht ungültig aus (nur http/https erlaubt).";
-      fUrl.focus(); return;
+      formErr.textContent = "Der Link sieht ungültig aus (nur http/https erlaubt)."; fUrl.focus(); return;
+    }
+    if (mapsRaw && !safeUrl(mapsRaw)) {
+      formErr.textContent = "Der Google-Maps-Link sieht ungültig aus."; fMaps.focus(); return;
     }
 
-    places.push({
-      id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
+    const data = {
       name,
       url: urlRaw,
+      maps: mapsRaw,
       hasLunch: fHasLunch.checked,
       lunchInfo: fHasLunch.checked ? fLunch.value.trim() : "",
-      created: Date.now()
-    });
-    persist(places);
-    render();
-    resetForm();
-    closeSheet();
+      visited: fVisited.checked
+    };
+
+    if (editingId) {
+      const p = places.find((x) => x.id === editingId);
+      if (p) { Object.assign(p, data); p.updated = Date.now(); }
+    } else {
+      places.push(Object.assign({
+        id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
+        created: Date.now()
+      }, data));
+    }
+    persist(places); render(); resetForm(); closeSheet();
   }
 
-  $("openAdd").addEventListener("click", openSheet);
+  $("openAdd").addEventListener("click", openSheetForAdd);
   $("cancelAdd").addEventListener("click", () => { resetForm(); closeSheet(); });
   $("scrim").addEventListener("click", () => { resetForm(); closeSheet(); });
   $("savePlace").addEventListener("click", savePlace);
 
-  /* ---------- Roulette ---------- */
-  const filterLunch = $("filterLunch");
+  /* ---------- Roulette (zieht aus dem gefilterten Pool) ---------- */
   const result = $("result"), reel = $("reel"), halo = $("halo");
   const resultMenu = $("resultMenu"), resultHint = $("resultHint"),
         resultActions = $("resultActions"), resultEyebrow = $("resultEyebrow");
   let spinTimer = null;
-
-  function candidates() {
-    return filterLunch.checked ? places.filter((p) => p.hasLunch) : places.slice();
-  }
 
   function openResult() {
     resultMenu.hidden = true; resultHint.hidden = true; resultActions.hidden = true;
@@ -620,17 +693,14 @@
   }
 
   function spin() {
-    const list = candidates();
+    const list = getFiltered();
     openResult();
 
     if (list.length === 0) {
       resultEyebrow.textContent = "Kein Treffer";
-      reel.classList.add("landed");
-      reel.textContent = "🤷";
+      reel.classList.add("landed"); reel.textContent = "🤷";
       resultHint.hidden = false;
-      resultHint.textContent = filterLunch.checked
-        ? "Kein gespeicherter Ort hat ein Mittagsmenü hinterlegt."
-        : "Füge erst einen Ort hinzu, dann dreht das Rad.";
+      resultHint.textContent = "Für die aktuellen Filter gibt es keinen Ort.";
       return;
     }
 
@@ -639,8 +709,7 @@
 
     const reveal = () => {
       spinTimer = null;
-      reel.className = "reel landed";
-      reel.textContent = winner.name;
+      reel.className = "reel landed"; reel.textContent = winner.name;
       halo.className = "halo on";
       if (navigator.vibrate) try { navigator.vibrate(18); } catch (e) {}
       showWinnerMeta(winner);
@@ -648,27 +717,20 @@
 
     if (prefersReduced || list.length === 1) { reveal(); return; }
 
-    // Slot-Machine: schnell starten, sanft auslaufen
     reel.className = "reel spinning";
-    const total = 1600;
-    let elapsed = 0;
+    const total = 1600; let elapsed = 0;
     const tick = () => {
       reel.textContent = list[Math.floor(Math.random() * list.length)].name;
       elapsed += 60;
-      const delay = 55 + Math.pow(elapsed / total, 2.2) * 320; // wird langsamer
+      const delay = 55 + Math.pow(elapsed / total, 2.2) * 320;
       spinTimer = setTimeout(elapsed < total ? tick : reveal, delay);
     };
     tick();
   }
 
   function showWinnerMeta(p) {
-    if (p.hasLunch && p.lunchInfo) {
-      resultMenu.hidden = false;
-      resultMenu.textContent = "🍽️ " + p.lunchInfo;
-    } else if (p.hasLunch) {
-      resultMenu.hidden = false;
-      resultMenu.textContent = "🍽️ Hat ein Mittagsmenü";
-    }
+    if (p.hasLunch && p.lunchInfo) { resultMenu.hidden = false; resultMenu.textContent = "🍽️ " + p.lunchInfo; }
+    else if (p.hasLunch) { resultMenu.hidden = false; resultMenu.textContent = "🍽️ Hat ein Mittagsmenü"; }
 
     resultActions.textContent = "";
     const safe = safeUrl(p.url);
@@ -679,15 +741,23 @@
       go.textContent = "↗ Link öffnen";
       resultActions.appendChild(go);
     }
-    const live = document.createElement("button");
-    live.className = "rbtn"; live.type = "button";
-    live.textContent = "📍 Live-Status";
-    live.addEventListener("click", () => openExternal(liveStatusUrl(p.name)));
-    resultActions.appendChild(live);
+    const maps = document.createElement("button");
+    maps.className = "rbtn"; maps.type = "button"; maps.textContent = "📍 Maps";
+    maps.addEventListener("click", () => openExternal(mapsUrl(p)));
+    resultActions.appendChild(maps);
+
+    if (!p.visited) {
+      const seen = document.createElement("button");
+      seen.className = "rbtn rbtn--seen"; seen.type = "button"; seen.textContent = "✓ Als besucht markieren";
+      seen.addEventListener("click", () => {
+        markVisited(p.id);
+        seen.disabled = true; seen.textContent = "✓ Als besucht markiert";
+      });
+      resultActions.appendChild(seen);
+    }
 
     const again = document.createElement("button");
-    again.className = "rbtn rbtn--again"; again.type = "button";
-    again.textContent = "🎲 Nochmal drehen";
+    again.className = "rbtn rbtn--again"; again.type = "button"; again.textContent = "🎲 Nochmal drehen";
     again.addEventListener("click", spin);
     resultActions.appendChild(again);
 
@@ -701,59 +771,47 @@
     if (e.key === "Escape") { closeResult(); if (!sheet.hidden) { resetForm(); closeSheet(); } }
   });
 
-  /* ---------- Share Target / iOS-Shortcuts: ?url=&title=&text= einlesen ----------
-     Android nutzt das echte Web-Share-Target (siehe Manifest unten).
-     Auf dem iPhone kannst du per Kurzbefehl die App mit ?url=… öffnen –
-     das Formular wird dann automatisch vorausgefüllt. */
+  /* ---------- Share Target / iOS-Shortcuts: ?url=&title=&maps= einlesen ---------- */
   function handleShared() {
     const q = new URLSearchParams(location.search);
     const sharedUrl = q.get("url") || q.get("text") || "";
     const sharedTitle = q.get("title") || q.get("name") || "";
-    if (!sharedUrl && !sharedTitle) return;
+    const sharedMaps = q.get("maps") || "";
+    if (!sharedUrl && !sharedTitle && !sharedMaps) return;
 
-    openSheet();
+    openSheetForAdd();
     if (sharedTitle) fName.value = sharedTitle.trim();
-    const maybe = safeUrl(sharedUrl);
-    if (maybe) fUrl.value = maybe;
-    else if (sharedUrl) {
-      // Falls im "text" eine URL steckt, herausziehen
-      const m = sharedUrl.match(/https?:\/\/\S+/);
-      if (m) fUrl.value = m[0];
-    }
-    // Adressleiste aufräumen, damit ein Reload nicht erneut auslöst
+    const u = safeUrl(sharedUrl);
+    if (u) fUrl.value = u;
+    else if (sharedUrl) { const m = sharedUrl.match(/https?:\/\/\S+/); if (m) fUrl.value = m[0]; }
+    const mp = safeUrl(sharedMaps);
+    if (mp) fMaps.value = mp;
     if (history.replaceState) history.replaceState(null, "", location.pathname);
   }
 
-  /* ---------- PWA-Manifest + App-Icon zur Laufzeit (damit alles 1 Datei bleibt) ---------- */
+  /* ---------- PWA-Manifest + App-Icon zur Laufzeit (alles in 1 Datei) ---------- */
   function makeIcon(size) {
     const c = document.createElement("canvas");
     c.width = c.height = size;
     const x = c.getContext("2d");
     const r = size * 0.22;
-    // warmer Hintergrund
-    x.fillStyle = "#15120D";
-    x.fillRect(0, 0, size, size);
-    // gerundetes Akzent-Feld
+    x.fillStyle = "#15120D"; x.fillRect(0, 0, size, size);
     x.fillStyle = "#F3A227";
-    x.beginPath();
     const m = size * 0.1, w = size - m * 2;
+    x.beginPath();
     x.moveTo(m + r, m);
     x.arcTo(m + w, m, m + w, m + w, r);
     x.arcTo(m + w, m + w, m, m + w, r);
     x.arcTo(m, m + w, m, m, r);
     x.arcTo(m, m, m + w, m, r);
     x.closePath(); x.fill();
-    // Würfel-Emoji
     x.font = (size * 0.5) + "px serif";
     x.textAlign = "center"; x.textBaseline = "middle";
     x.fillText("🎲", size / 2, size / 2 + size * 0.03);
     return c.toDataURL("image/png");
   }
-
   function installPWA() {
     const icon180 = makeIcon(180), icon192 = makeIcon(192), icon512 = makeIcon(512);
-
-    // iOS Homescreen-Icon
     const touch = document.createElement("link");
     touch.rel = "apple-touch-icon"; touch.href = icon180;
     document.head.appendChild(touch);
@@ -772,20 +830,16 @@
         { src: icon192, sizes: "192x192", type: "image/png", purpose: "any" },
         { src: icon512, sizes: "512x512", type: "image/png", purpose: "any maskable" }
       ]
-      // Hinweis: Kein "share_target" hier. Web Share Target bräuchte eine echte,
-      // gehostete manifest.json (kein Blob) + Service Worker und wird auf iOS-Safari
-      // ohnehin nicht unterstützt. Das Teilen läuft stattdessen über ?url=/?title=
-      // (siehe handleShared) – z. B. via iOS-Kurzbefehl, host-unabhängig.
+      // Kein share_target (Blob-Manifest + iOS unterstützen das nicht). Teilen läuft
+      // über ?url=/?title=/?maps= (siehe handleShared), z. B. via iOS-Kurzbefehl.
     };
     const blob = new Blob([JSON.stringify(manifest)], { type: "application/manifest+json" });
     const link = document.createElement("link");
-    link.rel = "manifest";
-    link.href = URL.createObjectURL(blob);
+    link.rel = "manifest"; link.href = URL.createObjectURL(blob);
     document.head.appendChild(link);
   }
 
-  /* ---------- Start ---------- */
-  try { installPWA(); } catch (e) { /* Icon/Manifest optional – App läuft trotzdem */ }
+  try { installPWA(); } catch (e) {}
   render();
   handleShared();
 })();
