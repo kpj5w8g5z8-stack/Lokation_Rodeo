@@ -72,6 +72,26 @@
   .brand__name{ margin:0; font-family: var(--font-display); font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
   .brand__name b{ color: var(--amber); font-weight: 800; }
   .brand__sub{ margin:2px 0 0; font-size: 13px; color: var(--muted); }
+  .iconbtn{
+    margin-left:auto; flex:0 0 auto; width:44px; height:44px;
+    border:0; border-radius:14px; background: var(--surface);
+    box-shadow: inset 0 0 0 1px var(--line-2); color: var(--text); font-size:19px;
+    transition: transform .08s;
+  }
+  .iconbtn:active{ transform: scale(.94); }
+
+  /* Backup-Sheet */
+  .backup-note{ color: var(--muted); font-size:13.5px; margin: 0 2px 16px; line-height:1.5; }
+  .bigbtn{
+    width:100%; min-height: var(--tap); margin-bottom:10px;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    border:0; border-radius: var(--r-md); font-size:16px; font-weight:700;
+    background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-2); color: var(--text);
+    transition: transform .08s;
+  }
+  .bigbtn:active{ transform: scale(.98); }
+  .bigbtn--primary{ background: linear-gradient(180deg, var(--amber-2), var(--amber)); color:#1A140A; box-shadow:none; }
+  .backup-status{ font-size:14px; margin: 6px 2px 14px; min-height:1px; }
 
   /* ---------- Stage ---------- */
   .stage{ padding: 4px 16px var(--dock-h); max-width: 640px; margin: 0 auto; }
@@ -116,6 +136,45 @@
   .pill:has(input:checked){ color: var(--text); box-shadow: inset 0 0 0 1px var(--amber-tint); }
   .pill input:focus-visible ~ .knob{ outline: 2px solid var(--amber-2); outline-offset: 3px; }
 
+  /* Städte-Filter (horizontal scrollbar) */
+  .cityrow{
+    display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+    margin: -8px 2px 18px; padding-bottom: 2px; scrollbar-width:none;
+  }
+  .cityrow::-webkit-scrollbar{ display:none; }
+  .cchip{
+    flex:0 0 auto; border:0; min-height:40px; padding:8px 15px;
+    border-radius:999px; background:var(--surface); box-shadow: inset 0 0 0 1px var(--line);
+    color:var(--muted); font-size:14px; font-weight:600; white-space:nowrap;
+    transition: background .15s, color .15s;
+  }
+  .cchip[aria-pressed="true"]{ background: var(--amber); color:#1A140A; }
+  .cchip--manage{ color: var(--amber-2); padding:8px 13px; }
+  .cchip:focus-visible{ outline:2px solid var(--amber-2); outline-offset:2px; }
+
+  /* Verwaltungs-Sheet für Städte */
+  .cityadd{ display:flex; gap:10px; margin-bottom: 14px; }
+  .cityadd .input{ flex:1 1 auto; }
+  .cityadd button{
+    flex:0 0 auto; width:58px; min-height:var(--tap); border:0; border-radius:var(--r-md);
+    background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line-2);
+    color:var(--text); font-size:24px;
+  }
+  .citylist{ display:flex; flex-direction:column; gap:8px; margin: 0 0 16px; }
+  .cityitem{
+    display:flex; align-items:center; gap:10px;
+    background: var(--surface); border-radius: var(--r-md);
+    box-shadow: inset 0 0 0 1px var(--line); padding: 11px 12px 11px 15px;
+  }
+  .cityitem .cname{ flex:1 1 auto; font-size:15px; font-weight:600; overflow-wrap:anywhere; }
+  .cityitem .ccount{ flex:0 0 auto; font-size:12px; color:var(--muted); }
+  .cityitem .cdel{
+    flex:0 0 auto; width:42px; height:42px; border:0; border-radius:10px;
+    background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--line);
+    color: var(--danger); font-size:16px;
+  }
+  .cityempty{ color:var(--muted); font-size:14px; text-align:center; padding: 16px; }
+
   /* ---------- Library ---------- */
   .library{ display:flex; flex-direction: column; gap: 12px; }
 
@@ -139,6 +198,7 @@
   }
   .badge--lunch{ color: var(--amber-2); background: var(--amber-tint); }
   .badge--seen{ color: var(--seen); background: var(--seen-tint); }
+  .badge--city{ color: var(--text); background: rgba(255,255,255,.07); }
 
   .card__menu{
     margin: 10px 0 2px; font-size: 14px; color: var(--muted); overflow-wrap:anywhere;
@@ -297,6 +357,7 @@
   @keyframes halo{ 0%{opacity:0; transform:scale(.5);} 40%{opacity:1;} 100%{opacity:0; transform:scale(1.5);} }
 
   .result__menu{ margin: 20px 0 4px; font-size: 15.5px; color: var(--amber-2); max-width: 30ch; overflow-wrap:anywhere; }
+  .result__city{ margin: 10px 0 0; font-size: 14px; color: var(--muted); letter-spacing:.04em; }
   .result__hint{ color:var(--muted); font-size:15px; max-width: 26ch; margin-top: 6px; }
   .result__actions{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top: 30px; width:100%; max-width: 360px; }
   .rbtn{
@@ -331,6 +392,7 @@
       <h1 class="brand__name">Location <b>Roulette</b></h1>
       <p class="brand__sub" id="count">Lädt …</p>
     </div>
+    <button class="iconbtn" id="openBackup" aria-label="Daten &amp; Backup">⇅</button>
   </header>
 
   <main class="stage">
@@ -346,6 +408,8 @@
         <span>🍽️ Mittagsmenü</span>
       </label>
     </div>
+
+    <div class="cityrow" id="cityrow" role="group" aria-label="Nach Stadt filtern" hidden></div>
 
     <section class="library" id="library" aria-live="polite"></section>
 
@@ -375,6 +439,13 @@
     <div class="field">
       <label for="fName">Name des Ortes</label>
       <input class="input" id="fName" type="text" placeholder="z. B. Trattoria Da Mario / Cool Bar" autocomplete="off" enterkeyhint="next" />
+    </div>
+
+    <div class="field">
+      <label for="fCity">Stadt / Ort</label>
+      <input class="input" id="fCity" type="text" list="cityOptions" placeholder="z. B. Stuttgart" autocomplete="off" enterkeyhint="next" />
+      <datalist id="cityOptions"></datalist>
+      <span class="hint">Neue Stadt eintippen oder eine bestehende auswählen.</span>
     </div>
 
     <div class="field">
@@ -413,12 +484,43 @@
     </div>
   </div>
 
+  <!-- ===== Daten & Backup ===== -->
+  <div class="scrim" id="backupScrim" hidden></div>
+  <div class="sheet" id="backupSheet" role="dialog" aria-modal="true" aria-label="Daten und Backup" hidden>
+    <div class="grip" aria-hidden="true"></div>
+    <h2>Daten &amp; Backup</h2>
+    <p class="backup-note">Alle Daten bleiben nur auf diesem Gerät. Lade ein Backup als Datei herunter (z. B. in „Dateien" / iCloud) oder spiele es auf einem anderen Gerät wieder ein. Beim Einspielen werden Orte ergänzt, nichts überschrieben.</p>
+    <button class="bigbtn bigbtn--primary" id="doExport" type="button">⬇&nbsp; Backup herunterladen</button>
+    <button class="bigbtn" id="doImport" type="button">⬆&nbsp; Backup einspielen</button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden />
+    <p class="backup-status" id="backupStatus" aria-live="polite"></p>
+    <div class="sheet__actions">
+      <button class="btn-cancel" id="closeBackup" style="flex:1 1 auto;">Fertig</button>
+    </div>
+  </div>
+
+  <!-- ===== Städte verwalten ===== -->
+  <div class="scrim" id="cityScrim" hidden></div>
+  <div class="sheet" id="citySheet" role="dialog" aria-modal="true" aria-label="Städte verwalten" hidden>
+    <div class="grip" aria-hidden="true"></div>
+    <h2>Städte verwalten</h2>
+    <div class="cityadd">
+      <input class="input" id="newCity" type="text" placeholder="Neue Stadt hinzufügen" autocomplete="off" enterkeyhint="done" />
+      <button id="addCity" type="button" aria-label="Stadt hinzufügen">＋</button>
+    </div>
+    <div class="citylist" id="citylist"></div>
+    <div class="sheet__actions">
+      <button class="btn-cancel" id="closeCity" style="flex:1 1 auto;">Fertig</button>
+    </div>
+  </div>
+
   <!-- ===== Roulette-Ergebnis ===== -->
   <div class="result" id="result" role="dialog" aria-modal="true" aria-label="Ergebnis" hidden>
     <button class="result__close" id="closeResult" aria-label="Schließen">✕</button>
     <div class="halo" id="halo" aria-hidden="true"></div>
     <p class="result__eyebrow" id="resultEyebrow">Heute geht's zu …</p>
     <div class="reel" id="reel"></div>
+    <p class="result__city" id="resultCity" hidden></p>
     <p class="result__menu" id="resultMenu" hidden></p>
     <p class="result__hint" id="resultHint" hidden></p>
     <div class="result__actions" id="resultActions" hidden></div>
@@ -430,12 +532,14 @@
   /* =========================================================================
      Location Roulette – 100 % lokal. Keine Server-Calls, keine Cookies, keine Keys.
      Alle Daten liegen ausschließlich im localStorage dieses Geräts.
-     Datensatz: { id, name, url, maps, hasLunch, lunchInfo, visited, created, updated }
+     Datensatz: { id, name, city, url, maps, hasLunch, lunchInfo, visited, created, updated }
      ========================================================================= */
 
   const STORE_KEY = "lunch_roulette_v1";
+  const CITY_KEY = "location_roulette_cities_v1";
   const $ = (id) => document.getElementById(id);
   const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const byName = (a, b) => a.localeCompare(b, "de");
 
   /* ---------- Datenhaltung (localStorage) ---------- */
   function load() {
@@ -449,7 +553,26 @@
     try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); }
     catch (e) { alert("Speichern fehlgeschlagen – ist der Gerätespeicher voll?"); }
   }
+  function loadCities() {
+    try {
+      const raw = localStorage.getItem(CITY_KEY);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr.filter((c) => typeof c === "string") : [];
+    } catch (e) { return []; }
+  }
+  function persistCities(list) {
+    try { localStorage.setItem(CITY_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+
   let places = load();
+  let cities = loadCities();
+  // Selbstheilung: jede an Einträgen genutzte Stadt gehört auch in die Liste.
+  (function mergeCities() {
+    const set = new Set(cities);
+    places.forEach((p) => { if (p.city) set.add(p.city); });
+    cities = [...set].sort(byName);
+    persistCities(cities);
+  })();
 
   /* ---------- Sicherheit: Links streng prüfen (nur http/https) ---------- */
   function safeUrl(raw) {
@@ -473,12 +596,14 @@
   /* ---------- Filter ---------- */
   let visitedFilter = "all";          // "all" | "new" | "visited"
   let lunchOnly = false;
+  let cityFilter = "all";             // "all" | <Stadtname>
 
   function getFiltered() {
     return places.filter((p) => {
       if (lunchOnly && !p.hasLunch) return false;
       if (visitedFilter === "new" && p.visited) return false;
       if (visitedFilter === "visited" && !p.visited) return false;
+      if (cityFilter !== "all" && (p.city || "") !== cityFilter) return false;
       return true;
     });
   }
@@ -488,6 +613,7 @@
         emptyFilteredEl = $("emptyFiltered"), countEl = $("count");
 
   function render() {
+    buildCityUI();
     libraryEl.textContent = "";
     const total = places.length;
     const list = getFiltered();
@@ -511,9 +637,14 @@
       title.textContent = p.name;
       card.appendChild(title);
 
-      if (p.hasLunch || p.visited) {
+      if (p.hasLunch || p.visited || p.city) {
         const tags = document.createElement("div");
         tags.className = "tags";
+        if (p.city) {
+          const b = document.createElement("span");
+          b.className = "badge badge--city"; b.textContent = p.city;
+          tags.appendChild(b);
+        }
         if (p.hasLunch) {
           const b = document.createElement("span");
           b.className = "badge badge--lunch"; b.textContent = "🍽️ Menü";
@@ -581,6 +712,101 @@
     persist(places); render();
   }
 
+  /* ---------- Städte: Filterzeile, Vorschläge, Verwaltung ---------- */
+  function addCityIfNew(name) {
+    if (name && !cities.includes(name)) {
+      cities.push(name); cities.sort(byName); persistCities(cities);
+    }
+  }
+
+  function buildCityUI() {
+    // Vorschlagsliste fürs Formular
+    const dl = $("cityOptions");
+    dl.textContent = "";
+    cities.forEach((c) => { const o = document.createElement("option"); o.value = c; dl.appendChild(o); });
+
+    // Filter-Chips
+    const row = $("cityrow");
+    const keepScroll = row.scrollLeft;
+    row.textContent = "";
+    if (cities.length === 0) { row.hidden = true; return; }
+    row.hidden = false;
+
+    const mkFilter = (label, val) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "cchip";
+      b.textContent = label;
+      b.setAttribute("aria-pressed", String(cityFilter === val));
+      b.addEventListener("click", () => { cityFilter = val; render(); });
+      return b;
+    };
+    row.appendChild(mkFilter("Alle", "all"));
+    cities.forEach((c) => row.appendChild(mkFilter(c, c)));
+
+    const manage = document.createElement("button");
+    manage.type = "button"; manage.className = "cchip cchip--manage";
+    manage.setAttribute("aria-label", "Städte verwalten"); manage.textContent = "⚙ Bearbeiten";
+    manage.addEventListener("click", openCitySheet);
+    row.appendChild(manage);
+
+    row.scrollLeft = keepScroll;
+  }
+
+  function renderCityManage() {
+    const list = $("citylist");
+    list.textContent = "";
+    if (cities.length === 0) {
+      const e = document.createElement("div");
+      e.className = "cityempty"; e.textContent = "Noch keine Städte gespeichert.";
+      list.appendChild(e); return;
+    }
+    cities.forEach((c) => {
+      const item = document.createElement("div");
+      item.className = "cityitem";
+      const name = document.createElement("span");
+      name.className = "cname"; name.textContent = c;
+      const used = places.filter((p) => (p.city || "") === c).length;
+      const cnt = document.createElement("span");
+      cnt.className = "ccount"; cnt.textContent = used === 1 ? "1 Ort" : used + " Orte";
+      const del = document.createElement("button");
+      del.className = "cdel"; del.type = "button";
+      del.setAttribute("aria-label", "Stadt „" + c + "“ löschen"); del.textContent = "🗑";
+      del.addEventListener("click", () => deleteCity(c));
+      item.appendChild(name); item.appendChild(cnt); item.appendChild(del);
+      list.appendChild(item);
+    });
+  }
+
+  function deleteCity(name) {
+    const used = places.filter((p) => (p.city || "") === name).length;
+    const msg = used > 0
+      ? "„" + name + "“ löschen?\n" + used + (used === 1 ? " Eintrag verliert" : " Einträge verlieren") + " die Stadt-Zuordnung (die Orte bleiben erhalten)."
+      : "„" + name + "“ aus der Liste löschen?";
+    if (!confirm(msg)) return;
+    cities = cities.filter((c) => c !== name);
+    places.forEach((p) => { if ((p.city || "") === name) { p.city = ""; p.updated = Date.now(); } });
+    if (cityFilter === name) cityFilter = "all";
+    persistCities(cities); persist(places);
+    renderCityManage(); render();
+  }
+
+  function addCityFromInput() {
+    const name = $("newCity").value.trim();
+    if (!name) return;
+    addCityIfNew(name);
+    $("newCity").value = "";
+    renderCityManage(); render();
+    $("newCity").focus();
+  }
+
+  function openCitySheet() { renderCityManage(); $("cityScrim").hidden = false; $("citySheet").hidden = false; }
+  function closeCitySheet() { $("citySheet").hidden = true; $("cityScrim").hidden = true; }
+
+  $("addCity").addEventListener("click", addCityFromInput);
+  $("newCity").addEventListener("keydown", (e) => { if (e.key === "Enter") addCityFromInput(); });
+  $("closeCity").addEventListener("click", closeCitySheet);
+  $("cityScrim").addEventListener("click", closeCitySheet);
+
   /* ---------- Filter-Bedienung ---------- */
   $("seg").addEventListener("click", (e) => {
     const btn = e.target.closest("button[data-v]");
@@ -593,7 +819,7 @@
 
   /* ---------- Eingabe-/Bearbeiten-Sheet ---------- */
   const sheet = $("addSheet"), scrim = $("scrim");
-  const fName = $("fName"), fUrl = $("fUrl"), fMaps = $("fMaps"),
+  const fName = $("fName"), fCity = $("fCity"), fUrl = $("fUrl"), fMaps = $("fMaps"),
         fHasLunch = $("fHasLunch"), fLunch = $("fLunch"), lunchWrap = $("lunchWrap"),
         fVisited = $("fVisited"), formErr = $("formErr"),
         sheetTitle = $("sheetTitle"), saveBtn = $("savePlace");
@@ -601,7 +827,7 @@
 
   function resetForm() {
     editingId = null;
-    fName.value = ""; fUrl.value = ""; fMaps.value = ""; fLunch.value = "";
+    fName.value = ""; fCity.value = ""; fUrl.value = ""; fMaps.value = ""; fLunch.value = "";
     fHasLunch.checked = false; lunchWrap.hidden = true;
     fVisited.checked = false; formErr.textContent = "";
     sheetTitle.textContent = "Ort hinzufügen";
@@ -620,6 +846,7 @@
     resetForm();
     editingId = id;
     fName.value = p.name || "";
+    fCity.value = p.city || "";
     fUrl.value = p.url || "";
     fMaps.value = p.maps || "";
     fHasLunch.checked = !!p.hasLunch; lunchWrap.hidden = !p.hasLunch;
@@ -637,6 +864,7 @@
 
   function savePlace() {
     const name = fName.value.trim();
+    const city = fCity.value.trim();
     const urlRaw = fUrl.value.trim();
     const mapsRaw = fMaps.value.trim();
     formErr.textContent = "";
@@ -649,8 +877,11 @@
       formErr.textContent = "Der Google-Maps-Link sieht ungültig aus."; fMaps.focus(); return;
     }
 
+    addCityIfNew(city);
+
     const data = {
       name,
+      city,
       url: urlRaw,
       maps: mapsRaw,
       hasLunch: fHasLunch.checked,
@@ -675,14 +906,100 @@
   $("scrim").addEventListener("click", () => { resetForm(); closeSheet(); });
   $("savePlace").addEventListener("click", savePlace);
 
+  /* ---------- Backup: Daten als Datei sichern / einspielen ---------- */
+  function openBackupSheet() { $("backupStatus").textContent = ""; $("backupScrim").hidden = false; $("backupSheet").hidden = false; }
+  function closeBackupSheet() { $("backupSheet").hidden = true; $("backupScrim").hidden = true; }
+
+  function exportData() {
+    const payload = {
+      app: "Location Roulette", version: 1,
+      exportedAt: new Date().toISOString(),
+      places: places, cities: cities
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const d = new Date(), pad = (n) => String(n).padStart(2, "0");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "location-roulette-backup-" + d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + ".json";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    setStatus(places.length + (places.length === 1 ? " Ort" : " Orte") + " gesichert.", "ok");
+  }
+
+  function importData(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      let data;
+      try { data = JSON.parse(reader.result); }
+      catch (e) { return setStatus("Datei ist kein gültiges Backup (JSON).", "err"); }
+
+      const incoming = Array.isArray(data) ? data : (data && Array.isArray(data.places) ? data.places : null);
+      if (!incoming) return setStatus("Im Backup wurden keine Orte gefunden.", "err");
+
+      const existingIds = new Set(places.map((p) => p.id));
+      let added = 0, skipped = 0;
+      incoming.forEach((raw) => {
+        if (!raw || typeof raw !== "object") return;
+        const name = String(raw.name || "").trim();
+        if (!name) return;
+        let id = typeof raw.id === "string" ? raw.id : "";
+        if (id && existingIds.has(id)) { skipped++; return; }   // Duplikat überspringen
+        if (!id) id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
+        existingIds.add(id);
+        places.push({
+          id, name,
+          city: String(raw.city || "").trim(),
+          url: String(raw.url || "").trim(),
+          maps: String(raw.maps || "").trim(),
+          hasLunch: !!raw.hasLunch,
+          lunchInfo: String(raw.lunchInfo || "").trim(),
+          visited: !!raw.visited,
+          created: typeof raw.created === "number" ? raw.created : Date.now()
+        });
+        added++;
+      });
+
+      const set = new Set(cities);
+      if (data && Array.isArray(data.cities)) data.cities.forEach((c) => { if (typeof c === "string" && c.trim()) set.add(c.trim()); });
+      places.forEach((p) => { if (p.city) set.add(p.city); });
+      cities = [...set].sort(byName);
+
+      persist(places); persistCities(cities); render();
+      if (added > 0) setStatus(added + (added === 1 ? " Ort importiert" : " Orte importiert") + (skipped ? " · " + skipped + " bereits vorhanden" : "") + ".", "ok");
+      else setStatus("Keine neuen Orte – alles war schon vorhanden.", "ok");
+    };
+    reader.onerror = () => setStatus("Datei konnte nicht gelesen werden.", "err");
+    reader.readAsText(file);
+  }
+
+  function setStatus(msg, kind) {
+    const s = $("backupStatus");
+    s.style.color = kind === "err" ? "var(--danger)" : "var(--seen)";
+    s.textContent = msg;
+  }
+
+  $("openBackup").addEventListener("click", openBackupSheet);
+  $("closeBackup").addEventListener("click", closeBackupSheet);
+  $("backupScrim").addEventListener("click", closeBackupSheet);
+  $("doExport").addEventListener("click", exportData);
+  $("doImport").addEventListener("click", () => $("importFile").click());
+  $("importFile").addEventListener("change", (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f) importData(f);
+    e.target.value = "";
+  });
+
   /* ---------- Roulette (zieht aus dem gefilterten Pool) ---------- */
   const result = $("result"), reel = $("reel"), halo = $("halo");
   const resultMenu = $("resultMenu"), resultHint = $("resultHint"),
-        resultActions = $("resultActions"), resultEyebrow = $("resultEyebrow");
+        resultActions = $("resultActions"), resultEyebrow = $("resultEyebrow"),
+        resultCity = $("resultCity");
   let spinTimer = null;
 
   function openResult() {
     resultMenu.hidden = true; resultHint.hidden = true; resultActions.hidden = true;
+    resultCity.hidden = true;
     resultActions.textContent = "";
     reel.className = "reel"; halo.className = "halo";
     result.hidden = false;
@@ -729,6 +1046,7 @@
   }
 
   function showWinnerMeta(p) {
+    if (p.city) { resultCity.hidden = false; resultCity.textContent = "📍 " + p.city; }
     if (p.hasLunch && p.lunchInfo) { resultMenu.hidden = false; resultMenu.textContent = "🍽️ " + p.lunchInfo; }
     else if (p.hasLunch) { resultMenu.hidden = false; resultMenu.textContent = "🍽️ Hat ein Mittagsmenü"; }
 
@@ -768,7 +1086,12 @@
   $("closeResult").addEventListener("click", closeResult);
   result.addEventListener("click", (e) => { if (e.target === result) closeResult(); });
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") { closeResult(); if (!sheet.hidden) { resetForm(); closeSheet(); } }
+    if (e.key === "Escape") {
+      closeResult();
+      if (!sheet.hidden) { resetForm(); closeSheet(); }
+      if (!$("citySheet").hidden) closeCitySheet();
+      if (!$("backupSheet").hidden) closeBackupSheet();
+    }
   });
 
   /* ---------- Share Target / iOS-Shortcuts: ?url=&title=&maps= einlesen ---------- */
@@ -777,10 +1100,12 @@
     const sharedUrl = q.get("url") || q.get("text") || "";
     const sharedTitle = q.get("title") || q.get("name") || "";
     const sharedMaps = q.get("maps") || "";
-    if (!sharedUrl && !sharedTitle && !sharedMaps) return;
+    const sharedCity = q.get("city") || "";
+    if (!sharedUrl && !sharedTitle && !sharedMaps && !sharedCity) return;
 
     openSheetForAdd();
     if (sharedTitle) fName.value = sharedTitle.trim();
+    if (sharedCity) fCity.value = sharedCity.trim();
     const u = safeUrl(sharedUrl);
     if (u) fUrl.value = u;
     else if (sharedUrl) { const m = sharedUrl.match(/https?:\/\/\S+/); if (m) fUrl.value = m[0]; }
