@@ -379,6 +379,49 @@
     color: var(--muted); font-size:20px;
   }
 
+  /* ---------- Öffnungszeiten: Editor im Formular ---------- */
+  .hourspresets{ display:flex; flex-wrap:wrap; gap:8px; margin:0 0 12px; align-items:center; }
+  .hourspresets .plabel{ font-size:12px; color:var(--muted); margin-right:2px; }
+  .preset{
+    border:0; background:var(--surface-2); box-shadow:inset 0 0 0 1px var(--line-2);
+    color:var(--amber-2); font-size:13px; font-weight:600; padding:7px 12px;
+    min-height:36px; border-radius:999px; transition: transform .08s;
+  }
+  .preset:active{ transform:scale(.96); }
+  .preset:focus-visible{ outline:2px solid var(--amber-2); outline-offset:2px; }
+
+  .daystoggle{ display:flex; flex-wrap:wrap; gap:7px; margin-bottom:12px; }
+  .dtoggle{
+    flex:1 1 auto; min-width:42px; min-height:44px; border:0; border-radius:var(--r-sm);
+    background:var(--surface); box-shadow:inset 0 0 0 1px var(--line-2);
+    color:var(--muted); font-size:14px; font-weight:700; transition: background .15s, color .15s;
+  }
+  .dtoggle[aria-pressed="true"]{ background:var(--amber); color:#1A140A; box-shadow:none; }
+  .dtoggle:focus-visible{ outline:2px solid var(--amber-2); outline-offset:2px; }
+
+  .dayhours{ display:flex; flex-direction:column; gap:8px; }
+  .dayhours:empty{ display:none; }
+  .dayhour{
+    display:flex; align-items:center; gap:10px;
+    background:var(--surface); border-radius:var(--r-md);
+    box-shadow:inset 0 0 0 1px var(--line); padding:9px 12px;
+  }
+  .dayhour .dh-day{ flex:0 0 32px; font-size:14px; font-weight:700; color:var(--text); }
+  .tin{
+    flex:1 1 auto; min-width:0; min-height:42px; text-align:center;
+    background:var(--surface-2); border:0; border-radius:var(--r-sm);
+    box-shadow:inset 0 0 0 1px var(--line-2); color:var(--text);
+    font-size:15px; font-family:inherit; padding:8px 6px;
+  }
+  .tin:focus{ outline:none; box-shadow:inset 0 0 0 1.5px var(--amber); }
+  .dayhour .dh-sep{ color:var(--muted); font-size:14px; }
+
+  /* ---------- Öffnungszeiten: Anzeige auf Karte ---------- */
+  .badge--open{ color:#1A140A; background:var(--seen); }
+  .badge--closed{ color:var(--muted); background:rgba(255,255,255,.05); }
+  .card__week{ margin:8px 0 0; font-size:13px; color:var(--muted); overflow-wrap:anywhere; }
+  .card__week .wk-ico{ opacity:.75; margin-right:4px; }
+
   @media (prefers-reduced-motion: reduce){
     *{ animation-duration:.001ms !important; animation-iteration-count:1 !important; }
   }
@@ -410,6 +453,7 @@
     </div>
 
     <div class="cityrow" id="cityrow" role="group" aria-label="Nach Stadt filtern" hidden></div>
+    <div class="cityrow" id="hoursrow" role="group" aria-label="Nach Öffnungszeit filtern" hidden></div>
 
     <section class="library" id="library" aria-live="polite"></section>
 
@@ -457,6 +501,20 @@
       <label for="fMaps">Google-Maps-Link</label>
       <input class="input" id="fMaps" type="url" placeholder="https://maps.google.com/…" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" />
       <span class="hint">Optional. Wird leer gelassen, sucht „Maps" automatisch nach dem Namen.</span>
+    </div>
+
+    <div class="field">
+      <label>Öffnungszeiten</label>
+      <div class="hourspresets">
+        <span class="plabel">Schnell:</span>
+        <button class="preset" id="presetWeek" type="button">Mo–Fr</button>
+        <button class="preset" id="presetDaily" type="button">Täglich</button>
+        <button class="preset" id="presetWend" type="button">Wochenende</button>
+        <button class="preset" id="presetClear" type="button">Leeren</button>
+      </div>
+      <div class="daystoggle" id="daysToggle" role="group" aria-label="Geöffnete Tage"></div>
+      <div class="dayhours" id="dayHours"></div>
+      <span class="hint">Tippe die Tage an, an denen geöffnet ist, und trage die Zeiten ein. Über Mitternacht (z. B. 20:00–02:00) ist erlaubt. Leer = keine Angabe.</span>
     </div>
 
     <label class="checkrow">
@@ -521,6 +579,7 @@
     <p class="result__eyebrow" id="resultEyebrow">Heute geht's zu …</p>
     <div class="reel" id="reel"></div>
     <p class="result__city" id="resultCity" hidden></p>
+    <p class="result__city" id="resultHours" hidden></p>
     <p class="result__menu" id="resultMenu" hidden></p>
     <p class="result__hint" id="resultHint" hidden></p>
     <div class="result__actions" id="resultActions" hidden></div>
@@ -532,7 +591,8 @@
   /* =========================================================================
      Location Roulette – 100 % lokal. Keine Server-Calls, keine Cookies, keine Keys.
      Alle Daten liegen ausschließlich im localStorage dieses Geräts.
-     Datensatz: { id, name, city, url, maps, hasLunch, lunchInfo, visited, created, updated }
+     Datensatz: { id, name, city, url, maps, hasLunch, lunchInfo, visited, hours, created, updated }
+     hours: null | Array[7] (Mo=0…So=6), je Tag null (geschlossen) oder { o:"HH:MM", c:"HH:MM" }
      ========================================================================= */
 
   const STORE_KEY = "lunch_roulette_v1";
@@ -540,6 +600,52 @@
   const $ = (id) => document.getElementById(id);
   const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const byName = (a, b) => a.localeCompare(b, "de");
+  const DAYS = ["Mo","Di","Mi","Do","Fr","Sa","So"];   // Wochen-Index Mo=0 … So=6
+
+  /* ---------- Öffnungszeiten: Hilfen ---------- */
+  const validTime = (s) => typeof s === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
+  function sanitizeHours(raw) {
+    if (!Array.isArray(raw)) return null;
+    const out = [null, null, null, null, null, null, null];
+    let any = false;
+    for (let i = 0; i < 7; i++) {
+      const e = raw[i];
+      if (e && validTime(e.o) && validTime(e.c)) { out[i] = { o: e.o, c: e.c }; any = true; }
+    }
+    return any ? out : null;
+  }
+  const hasHours = (p) => Array.isArray(p.hours) && p.hours.some(Boolean);
+  const toMin = (hhmm) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
+  function nowParts() {
+    const d = new Date();
+    return { dow: (d.getDay() + 6) % 7, mins: d.getHours() * 60 + d.getMinutes() };
+  }
+  function isOpenNow(p) {
+    if (!hasHours(p)) return false;
+    const { dow, mins } = nowParts();
+    const t = p.hours[dow];
+    if (t) {
+      const o = toMin(t.o), c = toMin(t.c);
+      if (o <= c) { if (mins >= o && mins < c) return true; }
+      else if (mins >= o) return true;                 // über Mitternacht: Abend-Teil von heute
+    }
+    const y = p.hours[(dow + 6) % 7];                  // gestrige Schicht, die nach Mitternacht läuft
+    if (y) { const o = toMin(y.o), c = toMin(y.c); if (o > c && mins < c) return true; }
+    return false;
+  }
+  const isOpenOnDay = (p, dow) => hasHours(p) && !!p.hours[dow];
+  function formatWeek(hours) {
+    const seg = []; let i = 0;
+    while (i < 7) {
+      const h = hours[i];
+      if (!h) { i++; continue; }
+      let j = i;
+      while (j + 1 < 7 && hours[j + 1] && hours[j + 1].o === h.o && hours[j + 1].c === h.c) j++;
+      seg.push((i === j ? DAYS[i] : DAYS[i] + "–" + DAYS[j]) + " " + h.o + "–" + h.c);
+      i = j + 1;
+    }
+    return seg.join(" · ");
+  }
 
   /* ---------- Datenhaltung (localStorage) ---------- */
   function load() {
@@ -596,14 +702,18 @@
   /* ---------- Filter ---------- */
   let visitedFilter = "all";          // "all" | "new" | "visited"
   let lunchOnly = false;
-  let cityFilter = "all";             // "all" | <Stadtname>
+  let selectedCities = new Set();      // leer = alle Städte; mehrere kombinierbar (ODER-Logik)
+  let hoursFilter = "all";            // "all" | "now" | 0..6 (Wochentag, Mo=0)
 
   function getFiltered() {
+    const hf = hoursFilter;
     return places.filter((p) => {
       if (lunchOnly && !p.hasLunch) return false;
       if (visitedFilter === "new" && p.visited) return false;
       if (visitedFilter === "visited" && !p.visited) return false;
-      if (cityFilter !== "all" && (p.city || "") !== cityFilter) return false;
+      if (selectedCities.size > 0 && !selectedCities.has(p.city || "")) return false;
+      if (hf === "now" && !isOpenNow(p)) return false;
+      if (typeof hf === "number" && !isOpenOnDay(p, hf)) return false;
       return true;
     });
   }
@@ -614,6 +724,7 @@
 
   function render() {
     buildCityUI();
+    buildHoursUI();
     libraryEl.textContent = "";
     const total = places.length;
     const list = getFiltered();
@@ -637,12 +748,20 @@
       title.textContent = p.name;
       card.appendChild(title);
 
-      if (p.hasLunch || p.visited || p.city) {
+      if (p.hasLunch || p.visited || p.city || hasHours(p)) {
         const tags = document.createElement("div");
         tags.className = "tags";
         if (p.city) {
           const b = document.createElement("span");
           b.className = "badge badge--city"; b.textContent = p.city;
+          tags.appendChild(b);
+        }
+        if (hasHours(p)) {
+          const t = p.hours[nowParts().dow];
+          const b = document.createElement("span");
+          if (!t) { b.className = "badge badge--closed"; b.textContent = "🕒 Heute zu"; }
+          else if (isOpenNow(p)) { b.className = "badge badge--open"; b.textContent = "🕒 Jetzt offen · bis " + t.c; }
+          else { b.className = "badge badge--city"; b.textContent = "🕒 Heute " + t.o + "–" + t.c; }
           tags.appendChild(b);
         }
         if (p.hasLunch) {
@@ -662,6 +781,19 @@
         const menu = document.createElement("p");
         menu.className = "card__menu"; menu.textContent = p.lunchInfo;
         card.appendChild(menu);
+      }
+
+      if (hasHours(p)) {
+        const wk = formatWeek(p.hours);
+        if (wk) {
+          const w = document.createElement("p");
+          w.className = "card__week";
+          const ico = document.createElement("span");
+          ico.className = "wk-ico"; ico.textContent = "🕒"; ico.setAttribute("aria-hidden", "true");
+          w.appendChild(ico);
+          w.appendChild(document.createTextNode(wk));
+          card.appendChild(w);
+        }
       }
 
       const actions = document.createElement("div");
@@ -725,29 +857,59 @@
     dl.textContent = "";
     cities.forEach((c) => { const o = document.createElement("option"); o.value = c; dl.appendChild(o); });
 
-    // Filter-Chips
+    // Filter-Chips – Mehrfachauswahl: mehrere Städte kombinierbar (z. B. Ludwigsburg + Stuttgart)
     const row = $("cityrow");
     const keepScroll = row.scrollLeft;
     row.textContent = "";
     if (cities.length === 0) { row.hidden = true; return; }
     row.hidden = false;
 
-    const mkFilter = (label, val) => {
+    const allChip = document.createElement("button");
+    allChip.type = "button"; allChip.className = "cchip";
+    allChip.textContent = "Alle";
+    allChip.setAttribute("aria-pressed", String(selectedCities.size === 0));
+    allChip.addEventListener("click", () => { selectedCities.clear(); render(); });
+    row.appendChild(allChip);
+
+    cities.forEach((c) => {
       const b = document.createElement("button");
       b.type = "button"; b.className = "cchip";
-      b.textContent = label;
-      b.setAttribute("aria-pressed", String(cityFilter === val));
-      b.addEventListener("click", () => { cityFilter = val; render(); });
-      return b;
-    };
-    row.appendChild(mkFilter("Alle", "all"));
-    cities.forEach((c) => row.appendChild(mkFilter(c, c)));
+      b.textContent = c;
+      b.setAttribute("aria-pressed", String(selectedCities.has(c)));
+      b.addEventListener("click", () => {
+        if (selectedCities.has(c)) selectedCities.delete(c); else selectedCities.add(c);
+        render();
+      });
+      row.appendChild(b);
+    });
 
     const manage = document.createElement("button");
     manage.type = "button"; manage.className = "cchip cchip--manage";
     manage.setAttribute("aria-label", "Städte verwalten"); manage.textContent = "⚙ Bearbeiten";
     manage.addEventListener("click", openCitySheet);
     row.appendChild(manage);
+
+    row.scrollLeft = keepScroll;
+  }
+
+  function buildHoursUI() {
+    const row = $("hoursrow");
+    const keepScroll = row.scrollLeft;
+    row.textContent = "";
+    if (!places.some(hasHours)) { row.hidden = true; return; }   // nur zeigen, wenn Zeiten existieren
+    row.hidden = false;
+
+    const mk = (label, val) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "cchip";
+      b.textContent = label;
+      b.setAttribute("aria-pressed", String(hoursFilter === val));
+      b.addEventListener("click", () => { hoursFilter = val; render(); });
+      return b;
+    };
+    row.appendChild(mk("🕒 Alle", "all"));
+    row.appendChild(mk("Jetzt offen", "now"));
+    DAYS.forEach((d, i) => row.appendChild(mk(d, i)));
 
     row.scrollLeft = keepScroll;
   }
@@ -785,7 +947,7 @@
     if (!confirm(msg)) return;
     cities = cities.filter((c) => c !== name);
     places.forEach((p) => { if ((p.city || "") === name) { p.city = ""; p.updated = Date.now(); } });
-    if (cityFilter === name) cityFilter = "all";
+    selectedCities.delete(name);
     persistCities(cities); persist(places);
     renderCityManage(); render();
   }
@@ -825,11 +987,71 @@
         sheetTitle = $("sheetTitle"), saveBtn = $("savePlace");
   let editingId = null;
 
+  /* ---------- Öffnungszeiten-Editor (Arbeitszustand fürs Formular) ---------- */
+  const EMPTY_HOURS = () => [null, null, null, null, null, null, null];
+  let formHours = EMPTY_HOURS();
+  let lastHours = { o: "09:00", c: "18:00" };   // zuletzt genutzte Zeiten (erspart Tippen)
+  const daysToggleEl = $("daysToggle"), dayHoursEl = $("dayHours");
+
+  function buildDaysToggle() {
+    daysToggleEl.textContent = "";
+    DAYS.forEach((d, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "dtoggle"; b.textContent = d;
+      b.setAttribute("aria-pressed", String(!!formHours[i]));
+      b.addEventListener("click", () => {
+        formHours[i] = formHours[i] ? null : { o: lastHours.o, c: lastHours.c };
+        buildDaysToggle(); buildDayHours();
+      });
+      daysToggleEl.appendChild(b);
+    });
+  }
+  function buildDayHours() {
+    dayHoursEl.textContent = "";
+    DAYS.forEach((d, i) => {
+      if (!formHours[i]) return;
+      const row = document.createElement("div");
+      row.className = "dayhour";
+      const lab = document.createElement("span");
+      lab.className = "dh-day"; lab.textContent = d;
+      const from = document.createElement("input");
+      from.type = "time"; from.className = "tin"; from.value = formHours[i].o;
+      from.setAttribute("aria-label", d + " von");
+      from.addEventListener("input", () => { if (from.value) { formHours[i].o = from.value; lastHours.o = from.value; } });
+      const sep = document.createElement("span");
+      sep.className = "dh-sep"; sep.textContent = "–";
+      const to = document.createElement("input");
+      to.type = "time"; to.className = "tin"; to.value = formHours[i].c;
+      to.setAttribute("aria-label", d + " bis");
+      to.addEventListener("input", () => { if (to.value) { formHours[i].c = to.value; lastHours.c = to.value; } });
+      row.appendChild(lab); row.appendChild(from); row.appendChild(sep); row.appendChild(to);
+      dayHoursEl.appendChild(row);
+    });
+  }
+  function setFormHours(arr) {
+    formHours = sanitizeHours(arr) || EMPTY_HOURS();
+    const first = formHours.find(Boolean);
+    if (first) lastHours = { o: first.o, c: first.c };
+    buildDaysToggle(); buildDayHours();
+  }
+  function applyPreset(indices) {
+    const t = { o: lastHours.o, c: lastHours.c };
+    formHours = EMPTY_HOURS();
+    indices.forEach((i) => { formHours[i] = { o: t.o, c: t.c }; });
+    buildDaysToggle(); buildDayHours();
+  }
+  $("presetWeek").addEventListener("click", () => applyPreset([0, 1, 2, 3, 4]));
+  $("presetDaily").addEventListener("click", () => applyPreset([0, 1, 2, 3, 4, 5, 6]));
+  $("presetWend").addEventListener("click", () => applyPreset([5, 6]));
+  $("presetClear").addEventListener("click", () => { formHours = EMPTY_HOURS(); buildDaysToggle(); buildDayHours(); });
+
   function resetForm() {
     editingId = null;
     fName.value = ""; fCity.value = ""; fUrl.value = ""; fMaps.value = ""; fLunch.value = "";
     fHasLunch.checked = false; lunchWrap.hidden = true;
     fVisited.checked = false; formErr.textContent = "";
+    lastHours = { o: "09:00", c: "18:00" };
+    setFormHours(null);
     sheetTitle.textContent = "Ort hinzufügen";
     saveBtn.textContent = "Speichern";
   }
@@ -852,6 +1074,7 @@
     fHasLunch.checked = !!p.hasLunch; lunchWrap.hidden = !p.hasLunch;
     fLunch.value = p.lunchInfo || "";
     fVisited.checked = !!p.visited;
+    setFormHours(p.hours);
     sheetTitle.textContent = "Ort bearbeiten";
     saveBtn.textContent = "Aktualisieren";
     openSheet();
@@ -886,7 +1109,8 @@
       maps: mapsRaw,
       hasLunch: fHasLunch.checked,
       lunchInfo: fHasLunch.checked ? fLunch.value.trim() : "",
-      visited: fVisited.checked
+      visited: fVisited.checked,
+      hours: sanitizeHours(formHours)
     };
 
     if (editingId) {
@@ -955,6 +1179,7 @@
           hasLunch: !!raw.hasLunch,
           lunchInfo: String(raw.lunchInfo || "").trim(),
           visited: !!raw.visited,
+          hours: sanitizeHours(raw.hours),
           created: typeof raw.created === "number" ? raw.created : Date.now()
         });
         added++;
@@ -994,12 +1219,12 @@
   const result = $("result"), reel = $("reel"), halo = $("halo");
   const resultMenu = $("resultMenu"), resultHint = $("resultHint"),
         resultActions = $("resultActions"), resultEyebrow = $("resultEyebrow"),
-        resultCity = $("resultCity");
+        resultCity = $("resultCity"), resultHours = $("resultHours");
   let spinTimer = null;
 
   function openResult() {
     resultMenu.hidden = true; resultHint.hidden = true; resultActions.hidden = true;
-    resultCity.hidden = true;
+    resultCity.hidden = true; resultHours.hidden = true;
     resultActions.textContent = "";
     reel.className = "reel"; halo.className = "halo";
     result.hidden = false;
@@ -1047,6 +1272,13 @@
 
   function showWinnerMeta(p) {
     if (p.city) { resultCity.hidden = false; resultCity.textContent = "📍 " + p.city; }
+    if (hasHours(p)) {
+      const t = p.hours[nowParts().dow];
+      resultHours.hidden = false;
+      if (!t) resultHours.textContent = "🕒 Heute geschlossen";
+      else if (isOpenNow(p)) resultHours.textContent = "🕒 Jetzt geöffnet · bis " + t.c;
+      else resultHours.textContent = "🕒 Heute " + t.o + "–" + t.c;
+    }
     if (p.hasLunch && p.lunchInfo) { resultMenu.hidden = false; resultMenu.textContent = "🍽️ " + p.lunchInfo; }
     else if (p.hasLunch) { resultMenu.hidden = false; resultMenu.textContent = "🍽️ Hat ein Mittagsmenü"; }
 
